@@ -189,11 +189,6 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
       team_id: next.id,
       teamName: next.name
     })
-    })
-
-    setLastRoll(null)
-    setLocalRollerAnimation(null)
-    setDiceToDisplay(null)
   }
 
   const handleDuelComplete = async () => {
