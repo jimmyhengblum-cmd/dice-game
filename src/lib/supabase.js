@@ -165,5 +165,61 @@ export const db = {
     
     if (error) throw error
     return data
+  },
+
+  // Sélectionner le lanceur pour le tour
+  async selectRoller(gameId, rollerId) {
+    const { data, error } = await supabase
+      .from('games')
+      .update({ 
+        current_roller_id: rollerId,
+        has_rolled_this_turn: false 
+      })
+      .eq('id', gameId)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  // Enregistrer qu'un lancer a été fait
+  async recordRoll(gameId) {
+    const { data, error } = await supabase
+      .from('games')
+      .update({ has_rolled_this_turn: true })
+      .eq('id', gameId)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  // Vérifier si un lancer a déjà été fait ce tour
+  async hasRolledThisTurn(gameId) {
+    const { data, error } = await supabase
+      .from('games')
+      .select('has_rolled_this_turn')
+      .eq('id', gameId)
+      .single()
+    
+    if (error) throw error
+    return data?.has_rolled_this_turn ?? false
+  },
+
+  // Réinitialiser l'état de lancer pour le prochain tour
+  async resetRollerState(gameId) {
+    const { data, error } = await supabase
+      .from('games')
+      .update({ 
+        current_roller_id: null,
+        has_rolled_this_turn: false 
+      })
+      .eq('id', gameId)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
   }
-}

@@ -1,22 +1,61 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DiceRoller } from '../shared/Dice'
 import { DuelModal } from './DuelModal'
 import { db } from '../../lib/supabase'
-import { analyzeDiceRoll, getNextTeam, getEventMessage } from '../../lib/gameLogic'
+import { analyzeDiceRoll, getNextTeam, getEventMessage, selectRandomRoller, getValidDuelOptions } from '../../lib/gameLogic'
 
 export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   const [showDuelModal, setShowDuelModal] = useState(false)
   const [lastRoll, setLastRoll] = useState(null)
+  const [localRollerAnimation, setLocalRollerAnimation] = useState(null)
 
   const currentTeam = teams.find(t => t.id === game.current_team_id)
   const isMyTurn = currentPlayer?.team_id === game.current_team_id
+  const isMyTurnToRoll = game.current_roller_id === currentPlayer?.id
+  const hasAlreadyRolled = game.has_rolled_this_turn
+
+  // Sélectionner un lanceur aléatoire au début du tour
+  useEffect(() => {
+    if (isMyTurn && !game.current_roller_id && currentTeam?.players?.length > 0) {
+      const selectedRoller = selectRandomRoller(currentTeam.players)
+      if (selectedRoller) {
+        db.selectRoller(gameId, selectedRoller.id).then(() => {
+          // Enregistrer l'événement
+          db.createGameEvent(gameId, 'roller_selected', {
+            rollerId: selectedRoller.id,
+            rollerName: selectedRoller.username,
+            teamName: currentTeam.name,
+            team_id: currentTeam.id
+          })
+        })
+      }
+    }
+  }, [game.current_team_id, game.current_roller_id, isMyTurn, currentTeam, gameId])
 
   const handleDiceRoll = async (dice1, dice2) => {
+    // Validation côté frontend : vérifier que c'est bien ce joueur qui lance
+    if (!isMyTurnToRoll) {
+      console.error('Tentative non-autorisée de lancer les dés')
+      return
+    }
+
+    // Bloquer les relances
+    if (hasAlreadyRolled) {
+      console.error('Un lancer a déjà été effectué ce tour')
+      return
+    }
+
+    // Enregistrer le lancer comme effectué
+    await db.recordRoll(gameId)
+
     const analysis = analyzeDiceRoll(dice1, dice2)
     setLastRoll(analysis)
+    
+    // Afficher localement l'animation
+    setLocalRollerAnimation({ dice1, dice2, analysis })
 
-    // Enregistrer l'événement
+    // Enregistrer l'événement (visible à tous les joueurs)
     await db.createGameEvent(gameId, 'dice_roll', {
       player_id: currentPlayer.id,
       username: currentPlayer.username,
@@ -28,9 +67,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
 
     // Gérer le statut Catin
     if (analysis.isCatin) {
-      // Réinitialiser tous les statuts Catin
       await db.resetAllCatinStatuses(gameId)
-      // Mettre cette équipe en Catin
       await db.setCatinStatus(currentPlayer.team_id, true)
     }
 
@@ -52,6 +89,11 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
 
   const nextTurn = async () => {
     const next = getNextTeam(teams, game.current_team_id)
+    
+    // Réinitialiser l'état du lanceur pour le prochain tour
+    await db.resetRollerState(gameId)
+    
+    // Passer au tour suivant
     await db.nextTurn(gameId, next.id)
     
     await db.createGameEvent(gameId, 'team_turn', {
@@ -60,6 +102,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
     })
 
     setLastRoll(null)
+    setLocalRollerAnimation(null)
   }
 
   const handleDuelComplete = async () => {
@@ -99,7 +142,9 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
             <DiceRoller
               onRoll={handleDiceRoll}
               disabled={!isMyTurn}
-              currentPlayerName={isMyTurn ? currentPlayer?.username : null}
+              currentPlayerName={isMyTurn && game.current_roller_id ? teams.find(t => t.id === game.current_team_id)?.players?.find(p => p.id === game.current_roller_id)?.username : null}
+              currentRollerId={game.current_roller_id}
+              currentPlayerId={currentPlayer?.id}
             />
 
             {/* Résultat du dernier lancer */}

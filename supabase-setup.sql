@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS games (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   status TEXT DEFAULT 'lobby' CHECK (status IN ('lobby', 'playing', 'finished')),
   current_team_id UUID,
+  current_roller_id UUID,
+  has_rolled_this_turn BOOLEAN DEFAULT FALSE,
+  room_code TEXT UNIQUE,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

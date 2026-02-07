@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Dice } from '../shared/Dice'
 import { db } from '../../lib/supabase'
-import { rollSingleDice, resolveDuel } from '../../lib/gameLogic'
+import { rollSingleDice, resolveDuel, getValidDuelOptions, isValidDuelSelection } from '../../lib/gameLogic'
 
 export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete }) {
   const [step, setStep] = useState('select') // 'select', 'rolling', 'result'
@@ -12,11 +12,32 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
   const [team2Roll, setTeam2Roll] = useState(null)
   const [isRolling, setIsRolling] = useState(false)
   const [result, setResult] = useState(null)
+  const [autoStarted, setAutoStarted] = useState(false)
 
-  // Équipes disponibles pour le duel (toutes sauf celle qui a lancé le duel)
+  // Déterminer les options de duel valides
+  const duelOptions = getValidDuelOptions(teams, currentTeamId)
+  const isTwoTeamsMode = teams.length === 2
   const availableTeams = teams.filter(t => t.id !== currentTeamId)
 
+  // Si 2 équipes, démarrer automatiquement le duel
+  useEffect(() => {
+    if (isTwoTeamsMode && duelOptions.length > 0 && !autoStarted) {
+      const { team1: t1, team2: t2 } = duelOptions[0]
+      setTeam1(t1)
+      setTeam2(t2)
+      setAutoStarted(true)
+      setStep('select') // Laisser voir un instant avant de lancer
+      
+      // Auto-démarrer après 1 seconde
+      setTimeout(() => {
+        handleStartDuel(t1, t2)
+      }, 500)
+    }
+  }, [isTwoTeamsMode, duelOptions, autoStarted])
+
   const handleTeamSelect = (teamId, position) => {
+    if (isTwoTeamsMode) return // Bloque la sélection en mode 2 équipes
+
     if (position === 1) {
       setTeam1(teamId)
       // Réinitialiser team2 si c'est la même
@@ -28,16 +49,22 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
     }
   }
 
-  const handleStartDuel = async () => {
-    if (!team1 || !team2) return
+  const handleStartDuel = async (t1 = team1, t2 = team2) => {
+    if (!t1 || !t2) return
 
-    const team1Data = teams.find(t => t.id === team1)
-    const team2Data = teams.find(t => t.id === team2)
+    // Valider la sélection
+    if (!isValidDuelSelection(t1, t2, currentTeamId, teams)) {
+      alert('Sélection de duel invalide')
+      return
+    }
+
+    const team1Data = teams.find(t => t.id === t1)
+    const team2Data = teams.find(t => t.id === t2)
 
     // Enregistrer le début du duel
     await db.createGameEvent(gameId, 'duel_start', {
-      team1_id: team1,
-      team2_id: team2,
+      team1_id: t1,
+      team2_id: t2,
       team1Name: team1Data.name,
       team2Name: team2Data.name
     })
@@ -68,8 +95,8 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
 
       // Enregistrer le résultat
       db.createGameEvent(gameId, 'duel_result', {
-        team1_id: team1,
-        team2_id: team2,
+        team1_id: t1,
+        team2_id: t2,
         team1Roll: roll1,
         team2Roll: roll2,
         winner: duelResult.winner,
@@ -99,67 +126,84 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
 
         {step === 'select' && (
           <div>
-            <p className="text-center text-gray-600 mb-6">
-              Choisissez deux équipes qui vont s'affronter
-            </p>
-
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              {/* Sélection équipe 1 */}
-              <div>
-                <h3 className="font-bold text-center mb-3">Équipe 1</h3>
-                <div className="space-y-2">
-                  {availableTeams.map((team) => (
-                    <button
-                      key={team.id}
-                      onClick={() => handleTeamSelect(team.id, 1)}
-                      className={`w-full p-3 rounded-lg border-2 transition-all ${
-                        team1 === team.id
-                          ? 'border-blue-500 bg-blue-50 font-semibold'
-                          : 'border-gray-300 hover:border-blue-300'
-                      }`}
-                    >
-                      {team.name}
-                    </button>
-                  ))}
+            {isTwoTeamsMode ? (
+              <div className="text-center">
+                <p className="text-gray-600 mb-6">
+                  Duel automatique entre les deux équipes !
+                </p>
+                <div className="flex justify-center items-center gap-4 mb-6">
+                  <div className="text-xl font-bold">{teams.find(t => t.id === team1)?.name}</div>
+                  <div className="text-2xl">⚔️</div>
+                  <div className="text-xl font-bold">{teams.find(t => t.id === team2)?.name}</div>
                 </div>
               </div>
-
-              {/* Sélection équipe 2 */}
+            ) : (
               <div>
-                <h3 className="font-bold text-center mb-3">Équipe 2</h3>
-                <div className="space-y-2">
-                  {availableTeams.map((team) => (
-                    <button
-                      key={team.id}
-                      onClick={() => handleTeamSelect(team.id, 2)}
-                      className={`w-full p-3 rounded-lg border-2 transition-all ${
-                        team2 === team.id
-                          ? 'border-red-500 bg-red-50 font-semibold'
-                          : 'border-gray-300 hover:border-red-300'
-                      }`}
-                    >
-                      {team.name}
-                    </button>
-                  ))}
+                <p className="text-center text-gray-600 mb-6">
+                  Choisissez deux équipes qui vont s'affronter
+                </p>
+
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  {/* Sélection équipe 1 */}
+                  <div>
+                    <h3 className="font-bold text-center mb-3">Équipe 1</h3>
+                    <div className="space-y-2">
+                      {availableTeams.map((team) => (
+                        <button
+                          key={team.id}
+                          onClick={() => handleTeamSelect(team.id, 1)}
+                          className={`w-full p-3 rounded-lg border-2 transition-all ${
+                            team1 === team.id
+                              ? 'border-blue-500 bg-blue-50 font-semibold'
+                              : 'border-gray-300 hover:border-blue-300'
+                          }`}
+                        >
+                          {team.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sélection équipe 2 */}
+                  <div>
+                    <h3 className="font-bold text-center mb-3">Équipe 2</h3>
+                    <div className="space-y-2">
+                      {availableTeams.map((team) => (
+                        <button
+                          key={team.id}
+                          onClick={() => handleTeamSelect(team.id, 2)}
+                          className={`w-full p-3 rounded-lg border-2 transition-all ${
+                            team2 === team.id
+                              ? 'border-red-500 bg-red-50 font-semibold'
+                              : 'border-gray-300 hover:border-red-300'
+                          }`}
+                        >
+                          {team.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleStartDuel}
-                disabled={!team1 || !team2}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all"
-              >
-                Lancer le duel !
-              </button>
-            </div>
+            {!isTwoTeamsMode && (
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => handleStartDuel(team1, team2)}
+                  disabled={!team1 || !team2}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all"
+                >
+                  Lancer le duel !
+                </button>
+              </div>
+            )}
           </div>
         )}
 

@@ -46,14 +46,21 @@ export function Dice({ value, isRolling, isSpecial = false, size = 80 }) {
   )
 }
 
-export function DiceRoller({ onRoll, disabled, currentPlayerName }) {
+export function DiceRoller({ onRoll, disabled, currentPlayerName, currentRollerId, currentPlayerId }) {
   const [dice1, setDice1] = useState(null)
   const [dice2, setDice2] = useState(null)
   const [isRolling, setIsRolling] = useState(false)
+  const [rollAttempted, setRollAttempted] = useState(false)
+
+  // Déterminer si ce joueur est le lanceur autorisé
+  const isAuthorizedRoller = currentRollerId && currentPlayerId && currentRollerId === currentPlayerId
+  const isButtonDisabled = disabled || isRolling || rollAttempted || !isAuthorizedRoller
 
   const handleRoll = async () => {
-    if (disabled || isRolling) return
+    if (isButtonDisabled) return
 
+    // Désactiver immédiatement
+    setRollAttempted(true)
     setIsRolling(true)
     
     // Animation de roulement
@@ -116,21 +123,25 @@ export function DiceRoller({ onRoll, disabled, currentPlayerName }) {
 
       <button
         onClick={handleRoll}
-        disabled={disabled || isRolling}
+        disabled={isButtonDisabled}
         className={`px-8 py-3 rounded-lg font-semibold text-white transition-all ${
-          disabled || isRolling
+          isButtonDisabled
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl'
         }`}
       >
-        {isRolling ? 'Lancement...' : 'Lancer les dés'}
+        {isRolling ? 'Lancement...' : rollAttempted ? 'Lance effectué' : 'Lancer les dés'}
       </button>
 
-      {currentPlayerName && (
+      {isAuthorizedRoller ? (
+        <div className="text-sm text-green-600 font-semibold">
+          ✓ C'est votre tour de lancer
+        </div>
+      ) : currentPlayerName && disabled ? (
         <div className="text-sm text-gray-600">
           Tour de : <span className="font-semibold">{currentPlayerName}</span>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

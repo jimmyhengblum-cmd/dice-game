@@ -26,7 +26,7 @@ export function useRealtime(gameId) {
         },
         (payload) => {
           console.log('Game update:', payload)
-          if (payload.eventType === 'UPDATE') {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             setGame(payload.new)
           }
         }

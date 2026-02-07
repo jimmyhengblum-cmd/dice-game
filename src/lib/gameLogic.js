@@ -103,9 +103,67 @@ export function getEventMessage(eventType, data) {
     case 'game_start':
       return '🎮 La partie commence !'
     
+    case 'roller_selected':
+      return `${data.rollerName} de ${data.teamName} lance les dés !`
+    
     default:
       return ''
   }
+}
+
+// Sélectionner un lanceur aléatoire pour une équipe
+export function selectRandomRoller(teamPlayers) {
+  if (!teamPlayers || teamPlayers.length === 0) {
+    return null
+  }
+  const randomIndex = Math.floor(Math.random() * teamPlayers.length)
+  return teamPlayers[randomIndex]
+}
+
+// Valider les duels pour cas 2 équipes
+export function getValidDuelOptions(teams, currentTeamId) {
+  if (teams.length === 2) {
+    // Cas 2 équipes : duel automatique entre les 2 équipes
+    const opponent = teams.find(t => t.id !== currentTeamId)
+    return [
+      { team1: currentTeamId, team2: opponent.id, auto: true }
+    ]
+  }
+
+  // Cas > 2 équipes : offrir tous les duels valides (pas d'auto-duel)
+  const validOptions = []
+  const availableTeams = teams.filter(t => t.id !== currentTeamId)
+  
+  for (let i = 0; i < availableTeams.length; i++) {
+    for (let j = i + 1; j < availableTeams.length; j++) {
+      validOptions.push({
+        team1: availableTeams[i].id,
+        team2: availableTeams[j].id,
+        auto: false
+      })
+    }
+  }
+  
+  return validOptions
+}
+
+// Empêcher les duels d'une équipe contre elle-même
+export function isValidDuelSelection(team1Id, team2Id, currentTeamId, teams) {
+  // Les deux équipes doivent être différentes
+  if (team1Id === team2Id) {
+    return false
+  }
+
+  // Si 2 équipes : validation simple
+  if (teams.length === 2) {
+    const otherTeamId = teams.find(t => t.id !== currentTeamId)?.id
+    return (team1Id === currentTeamId && team2Id === otherTeamId) ||
+           (team2Id === currentTeamId && team1Id === otherTeamId)
+  }
+
+  // Si > 2 équipes : au moins une équipe n'est pas l'équipe courante
+  const teamsSet = new Set([team1Id, team2Id])
+  return teamsSet.size === 2 && !teamsSet.has(currentTeamId)
 }
 
 // Valider qu'une partie peut démarrer
