@@ -10,6 +10,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   const [lastRoll, setLastRoll] = useState(null)
   const [localRollerAnimation, setLocalRollerAnimation] = useState(null)
   const [diceToDisplay, setDiceToDisplay] = useState(null) // NEW: Dés à afficher (du serveur)
+  const [lockedRollId, setLockedRollId] = useState(null) // Track du dernier roll affiché pour éviter les rafraîchissements
   const lastSelectedTeamRef = useRef(null) // Track quel team a déjà eu une tentative de sélection
 
   const currentTeam = teams.find(t => t.id === game.current_team_id)
@@ -31,6 +32,14 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
       }
     }
   }, [game.current_team_id, isMyTurn, gameId])
+
+  // Réinitialiser le suivi quand on change de team (passage au tour suivant)
+  useEffect(() => {
+    // Quand game.current_team_id change, réinitialiser les états d'affichage
+    setLockedRollId(null)
+    setDiceToDisplay(null)
+    setLastRoll(null)
+  }, [game.current_team_id])
 
   // Nouvelle fonction avec retry logic
   const selectAndAssignRoller = async () => {
@@ -86,6 +95,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   }
 
   // Écouter les événements dice_roll pour synchroniser l'animation
+  // IMPORTANT: Vérouiller l'affichage pour éviter les rafraîchissements constants
   useEffect(() => {
     if (!events.length) return
 
@@ -94,17 +104,16 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
       .reverse()
       .find(e => e.event_type === 'dice_roll')
 
-    if (lastDiceEvent && lastDiceEvent.data) {
+    // Ne mettre à jour que si c'est un NOUVEL événement
+    if (lastDiceEvent && lastDiceEvent.id !== lockedRollId && lastDiceEvent.data) {
       const { dice1, dice2, analysis } = lastDiceEvent.data
       
-      // Si c'est un nouvel événement (pas déjà affiché)
-      if (diceToDisplay?.timestamp !== lastDiceEvent.created_at) {
-        // Afficher les dés pour l'animation
-        setDiceToDisplay({ dice1, dice2, analysis, timestamp: lastDiceEvent.created_at })
-        setLastRoll(analysis)
-      }
+      // Verrouiller cet affichage pour éviter les mises à jour ultérieures
+      setLockedRollId(lastDiceEvent.id)
+      setDiceToDisplay({ dice1, dice2, analysis, timestamp: lastDiceEvent.created_at })
+      setLastRoll(analysis)
     }
-  }, [events])
+  }, [events, lockedRollId])
 
   const handleDiceRoll = async (dice1, dice2) => {
     // Validation côté frontend
@@ -169,9 +178,17 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
     // Passer au tour suivant
     await db.nextTurn(gameId, next.id)
     
+    // Réinitialiser les états locaux pour le prochain tour
+    setLastRoll(null)
+    setLocalRollerAnimation(null)
+    setDiceToDisplay(null)
+    setLockedRollId(null) // Déverrouiller l'affichage pour le nouveau tour
+    lastSelectedTeamRef.current = null // Réinitialiser le ref pour permettre une nouvelle sélection
+    
     await db.createGameEvent(gameId, 'team_turn', {
       team_id: next.id,
       teamName: next.name
+    })
     })
 
     setLastRoll(null)
