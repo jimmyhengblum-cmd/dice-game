@@ -18,10 +18,14 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
 
   // Sélectionner un lanceur aléatoire au début du tour
   useEffect(() => {
-    if (isMyTurn && !game.current_roller_id && currentTeam?.players?.length > 0) {
-      selectAndAssignRoller()
+    // IMPORTANT: Vérifier que currentTeam a des joueurs avant de faire la sélection
+    if (isMyTurn && !game.current_roller_id && teams.length > 0) {
+      const team = teams.find(t => t.id === game.current_team_id)
+      if (team?.players?.length > 0) {
+        selectAndAssignRoller()
+      }
     }
-  }, [game.current_team_id, isMyTurn, currentTeam, gameId])
+  }, [game.current_team_id, isMyTurn, gameId])
 
   // Nouvelle fonction avec retry logic
   const selectAndAssignRoller = async () => {
