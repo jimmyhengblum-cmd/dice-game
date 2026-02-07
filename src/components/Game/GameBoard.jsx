@@ -1,101 +1,19 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DiceRoller } from '../shared/Dice'
 import { DuelModal } from './DuelModal'
 import { db } from '../../lib/supabase'
-import { analyzeDiceRoll, getNextTeam, getEventMessage, selectRandomRoller, getValidDuelOptions, isValidRoller } from '../../lib/gameLogic'
+import { analyzeDiceRoll, getNextTeam, getEventMessage } from '../../lib/gameLogic'
 
 export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   const [showDuelModal, setShowDuelModal] = useState(false)
   const [lastRoll, setLastRoll] = useState(null)
-  const [localRollerAnimation, setLocalRollerAnimation] = useState(null)
-  const [diceToDisplay, setDiceToDisplay] = useState(null) // NEW: Dés à afficher (du serveur)
-  const [lockedRollId, setLockedRollId] = useState(null) // Track du dernier roll affiché pour éviter les rafraîchissements
-  const lastSelectedTeamRef = useRef(null) // Track quel team a déjà eu une tentative de sélection
+  const [diceToDisplay, setDiceToDisplay] = useState(null)
 
   const currentTeam = teams.find(t => t.id === game.current_team_id)
   const isMyTurn = currentPlayer?.team_id === game.current_team_id
-  const isMyTurnToRoll = game.current_roller_id === currentPlayer?.id
-  const hasAlreadyRolled = game.has_rolled_this_turn
-
-  // Sélectionner un lanceur aléatoire au début du tour
-  useEffect(() => {
-    // Vérifier que c'est notre tour ET pas encore de lanceur assigné
-    if (isMyTurn && !game.current_roller_id && teams.length > 0) {
-      // Vérifier qu'on n'a pas DÉJÀ tenté de sélectionner pour ce team
-      if (lastSelectedTeamRef.current !== game.current_team_id) {
-        lastSelectedTeamRef.current = game.current_team_id
-        const team = teams.find(t => t.id === game.current_team_id)
-        if (team?.players?.length > 0) {
-          selectAndAssignRoller()
-        }
-      }
-    }
-  }, [game.current_team_id, isMyTurn, gameId])
-
-  // Réinitialiser le suivi quand on change de team (passage au tour suivant)
-  useEffect(() => {
-    // Quand game.current_team_id change, réinitialiser les états d'affichage
-    setLockedRollId(null)
-    setDiceToDisplay(null)
-    setLastRoll(null)
-  }, [game.current_team_id])
-
-  // Nouvelle fonction avec retry logic
-  const selectAndAssignRoller = async () => {
-    if (!currentTeam?.players?.length) {
-      console.warn('Équipe sans joueurs, impossible de sélectionner un lanceur')
-      return
-    }
-
-    try {
-      // IMPORTANT: Vérifier que current_roller_id est TOUJOURS vide (race condition protection)
-      if (game.current_roller_id) {
-        console.log('Un lanceur a déjà été assigné pour ce tour')
-        return
-      }
-
-      const selectedRoller = selectRandomRoller(currentTeam.players)
-      
-      if (!selectedRoller) {
-        console.warn('Aucun joueur valide trouvé, nouvelle tentative...')
-        // Retry après 500ms
-        setTimeout(() => selectAndAssignRoller(), 500)
-        return
-      }
-
-      // Vérifier que le joueur est bien dans l'équipe
-      if (!isValidRoller(selectedRoller.id, currentTeam.players)) {
-        console.warn('Joueur invalide sélectionné, nouvelle tentative...')
-        setTimeout(() => selectAndAssignRoller(), 500)
-        return
-      }
-
-      // IMPORTANT: Revérifier une dernière fois avant d'écrire en base
-      if (game.current_roller_id) {
-        console.log('Race condition: Un autre joueur a déjà assigné un lanceur')
-        return
-      }
-
-      // Assigner le lanceur
-      await db.selectRoller(gameId, selectedRoller.id)
-      
-      // Notifier les autres joueurs
-      await db.createGameEvent(gameId, 'roller_selected', {
-        rollerId: selectedRoller.id,
-        rollerName: selectedRoller.username,
-        teamName: currentTeam.name,
-        team_id: currentTeam.id
-      })
-    } catch (error) {
-      console.error('Erreur lors de la sélection du lanceur:', error)
-      // Retry après 1s en cas d'erreur
-      setTimeout(() => selectAndAssignRoller(), 1000)
-    }
-  }
 
   // Écouter les événements dice_roll pour synchroniser l'animation
-  // IMPORTANT: Vérouiller l'affichage pour éviter les rafraîchissements constants
   useEffect(() => {
     if (!events.length) return
 
@@ -104,42 +22,26 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
       .reverse()
       .find(e => e.event_type === 'dice_roll')
 
-    // Ne mettre à jour que si c'est un NOUVEL événement
-    if (lastDiceEvent && lastDiceEvent.id !== lockedRollId && lastDiceEvent.data) {
+    if (lastDiceEvent && lastDiceEvent.data) {
       const { dice1, dice2, analysis } = lastDiceEvent.data
       
-      // Verrouiller cet affichage pour éviter les mises à jour ultérieures
-      setLockedRollId(lastDiceEvent.id)
+      // Mettre à jour l'affichage des dés
       setDiceToDisplay({ dice1, dice2, analysis, timestamp: lastDiceEvent.created_at })
       setLastRoll(analysis)
     }
-  }, [events, lockedRollId])
+  }, [events])
 
   const handleDiceRoll = async (dice1, dice2) => {
-    // Validation côté frontend
-    if (!isMyTurnToRoll) {
-      console.error('Tentative non-autorisée de lancer les dés')
-      return
-    }
-
-    if (hasAlreadyRolled) {
-      console.error('Un lancer a déjà été effectué ce tour')
+    // Validation simple : c'est mon tour ?
+    if (!isMyTurn) {
+      console.error('Ce n\'est pas votre tour')
       return
     }
 
     try {
-      // Validation backend : vérifie que ce joueur est autorisé ET enregistre le lancer
-      const validation = await db.validateAndRecordRoll(gameId, currentPlayer.id, currentPlayer.team_id)
-      
-      if (!validation.valid) {
-        console.error('Validation backend échouée:', validation.error)
-        return
-      }
-
       const analysis = analyzeDiceRoll(dice1, dice2)
 
-      // Enregistrer l'événement temps réel (source unique de vérité)
-      // Les dés générés côté client sont envoyés ici
+      // Enregistrer l'événement temps réel
       await db.createGameEvent(gameId, 'dice_roll', {
         player_id: currentPlayer.id,
         username: currentPlayer.username,
@@ -172,18 +74,12 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   const nextTurn = async () => {
     const next = getNextTeam(teams, game.current_team_id)
     
-    // Réinitialiser l'état du lanceur pour le prochain tour
-    await db.resetRollerState(gameId)
-    
     // Passer au tour suivant
     await db.nextTurn(gameId, next.id)
     
-    // Réinitialiser les états locaux pour le prochain tour
+    // Réinitialiser les états locaux
     setLastRoll(null)
-    setLocalRollerAnimation(null)
     setDiceToDisplay(null)
-    setLockedRollId(null) // Déverrouiller l'affichage pour le nouveau tour
-    lastSelectedTeamRef.current = null // Réinitialiser le ref pour permettre une nouvelle sélection
     
     await db.createGameEvent(gameId, 'team_turn', {
       team_id: next.id,
@@ -228,11 +124,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
             {isMyTurn ? (
               <DiceRoller
                 onRoll={handleDiceRoll}
-                disabled={!isMyTurn}
-                currentPlayerName={isMyTurn && game.current_roller_id ? teams.find(t => t.id === game.current_team_id)?.players?.find(p => p.id === game.current_roller_id)?.username : null}
-                currentRollerId={game.current_roller_id}
-                currentPlayerId={currentPlayer?.id}
-                resetTrigger={game.current_roller_id} // Réinitialiser le bouton quand le lanceur change
+                disabled={false}
               />
             ) : (
               // Affichage des dés pour les joueurs en attente
@@ -240,9 +132,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
                 <div className="text-center text-gray-600 mb-4">
                   <p>En attente du lancer de :</p>
                   <p className="font-bold text-lg text-gray-800 mt-1">
-                    {game.current_roller_id ? 
-                      teams.find(t => t.id === game.current_team_id)?.players?.find(p => p.id === game.current_roller_id)?.username 
-                      : 'Sélection en cours...'}
+                    {currentTeam?.players?.[0]?.username || 'En attente...'}
                   </p>
                 </div>
                 
