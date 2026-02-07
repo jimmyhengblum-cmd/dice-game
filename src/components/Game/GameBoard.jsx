@@ -21,7 +21,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
     if (isMyTurn && !game.current_roller_id && currentTeam?.players?.length > 0) {
       selectAndAssignRoller()
     }
-  }, [game.current_team_id, game.current_roller_id, isMyTurn, currentTeam, gameId])
+  }, [game.current_team_id, isMyTurn, currentTeam, gameId])
 
   // Nouvelle fonction avec retry logic
   const selectAndAssignRoller = async () => {
