@@ -222,5 +222,49 @@ export const db = {
     
     if (error) throw error
     return data
+  },
+
+  // Générer les dés côté serveur (source unique de vérité)
+  async generateDiceRoll() {
+    const dice1 = Math.floor(Math.random() * 6) + 1
+    const dice2 = Math.floor(Math.random() * 6) + 1
+    return { dice1, dice2, timestamp: Date.now() }
+  },
+
+  // Valider et enregistrer un lancer (blocage backend)
+  async validateAndRecordRoll(gameId, playerId, teamId) {
+    try {
+      // 1. Vérifier que le joueur est bien le lanceur autorisé
+      const { data: gameData, error: gameError } = await supabase
+        .from('games')
+        .select('current_roller_id, has_rolled_this_turn')
+        .eq('id', gameId)
+        .single()
+      
+      if (gameError) throw gameError
+
+      // 2. Vérifier que ce joueur est autorisé
+      if (gameData.current_roller_id !== playerId) {
+        throw new Error('Ce joueur n\'est pas autorisé à lancer')
+      }
+
+      // 3. Vérifier qu'un lancer n'a pas déjà été effectué
+      if (gameData.has_rolled_this_turn === true) {
+        throw new Error('Un lancer a déjà été effectué ce tour')
+      }
+
+      // 4. Marquer le lancer comme effectué
+      const { error: updateError } = await supabase
+        .from('games')
+        .update({ has_rolled_this_turn: true })
+        .eq('id', gameId)
+
+      if (updateError) throw updateError
+
+      return { valid: true }
+    } catch (error) {
+      console.error('Validation du lancer échouée:', error.message)
+      return { valid: false, error: error.message }
+    }
   }
 }

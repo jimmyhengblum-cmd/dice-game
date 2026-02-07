@@ -116,8 +116,22 @@ export function selectRandomRoller(teamPlayers) {
   if (!teamPlayers || teamPlayers.length === 0) {
     return null
   }
-  const randomIndex = Math.floor(Math.random() * teamPlayers.length)
-  return teamPlayers[randomIndex]
+  
+  // Valider que les joueurs sont des objets valides
+  const validPlayers = teamPlayers.filter(p => p && p.id && p.username)
+  
+  if (validPlayers.length === 0) {
+    console.warn('Aucun joueur valide trouvé dans l\'équipe')
+    return null
+  }
+  
+  const randomIndex = Math.floor(Math.random() * validPlayers.length)
+  return validPlayers[randomIndex]
+}
+
+// Valider qu'un joueur peut lancer
+export function isValidRoller(playerId, teamPlayers) {
+  return playerId && teamPlayers && teamPlayers.some(p => p?.id === playerId)
 }
 
 // Valider les duels pour cas 2 équipes

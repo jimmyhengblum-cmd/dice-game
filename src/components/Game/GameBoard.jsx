@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { DiceRoller } from '../shared/Dice'
 import { DuelModal } from './DuelModal'
 import { db } from '../../lib/supabase'
-import { analyzeDiceRoll, getNextTeam, getEventMessage, selectRandomRoller, getValidDuelOptions } from '../../lib/gameLogic'
+import { analyzeDiceRoll, getNextTeam, getEventMessage, selectRandomRoller, getValidDuelOptions, isValidRoller } from '../../lib/gameLogic'
 
 export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   const [showDuelModal, setShowDuelModal] = useState(false)
   const [lastRoll, setLastRoll] = useState(null)
   const [localRollerAnimation, setLocalRollerAnimation] = useState(null)
+  const [diceToDisplay, setDiceToDisplay] = useState(null) // NEW: Dés à afficher (du serveur)
 
   const currentTeam = teams.find(t => t.id === game.current_team_id)
   const isMyTurn = currentPlayer?.team_id === game.current_team_id
@@ -18,72 +19,123 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   // Sélectionner un lanceur aléatoire au début du tour
   useEffect(() => {
     if (isMyTurn && !game.current_roller_id && currentTeam?.players?.length > 0) {
-      const selectedRoller = selectRandomRoller(currentTeam.players)
-      if (selectedRoller) {
-        db.selectRoller(gameId, selectedRoller.id).then(() => {
-          // Enregistrer l'événement
-          db.createGameEvent(gameId, 'roller_selected', {
-            rollerId: selectedRoller.id,
-            rollerName: selectedRoller.username,
-            teamName: currentTeam.name,
-            team_id: currentTeam.id
-          })
-        })
-      }
+      selectAndAssignRoller()
     }
   }, [game.current_team_id, game.current_roller_id, isMyTurn, currentTeam, gameId])
 
+  // Nouvelle fonction avec retry logic
+  const selectAndAssignRoller = async () => {
+    if (!currentTeam?.players?.length) {
+      console.warn('Équipe sans joueurs, impossible de sélectionner un lanceur')
+      return
+    }
+
+    try {
+      const selectedRoller = selectRandomRoller(currentTeam.players)
+      
+      if (!selectedRoller) {
+        console.warn('Aucun joueur valide trouvé, nouvelle tentative...')
+        // Retry après 500ms
+        setTimeout(() => selectAndAssignRoller(), 500)
+        return
+      }
+
+      // Vérifier que le joueur est bien dans l'équipe
+      if (!isValidRoller(selectedRoller.id, currentTeam.players)) {
+        console.warn('Joueur invalide sélectionné, nouvelle tentative...')
+        setTimeout(() => selectAndAssignRoller(), 500)
+        return
+      }
+
+      // Assigner le lanceur
+      await db.selectRoller(gameId, selectedRoller.id)
+      
+      // Notifier les autres joueurs
+      await db.createGameEvent(gameId, 'roller_selected', {
+        rollerId: selectedRoller.id,
+        rollerName: selectedRoller.username,
+        teamName: currentTeam.name,
+        team_id: currentTeam.id
+      })
+    } catch (error) {
+      console.error('Erreur lors de la sélection du lanceur:', error)
+      // Retry après 1s en cas d'erreur
+      setTimeout(() => selectAndAssignRoller(), 1000)
+    }
+  }
+
+  // Écouter les événements dice_roll pour synchroniser l'animation
+  useEffect(() => {
+    if (!events.length) return
+
+    // Chercher le dernier événement dice_roll
+    const lastDiceEvent = [...events]
+      .reverse()
+      .find(e => e.event_type === 'dice_roll')
+
+    if (lastDiceEvent && lastDiceEvent.data) {
+      const { dice1, dice2, analysis } = lastDiceEvent.data
+      
+      // Si c'est un nouvel événement (pas déjà affiché)
+      if (diceToDisplay?.timestamp !== lastDiceEvent.created_at) {
+        // Afficher les dés pour l'animation
+        setDiceToDisplay({ dice1, dice2, analysis, timestamp: lastDiceEvent.created_at })
+        setLastRoll(analysis)
+      }
+    }
+  }, [events])
+
   const handleDiceRoll = async (dice1, dice2) => {
-    // Validation côté frontend : vérifier que c'est bien ce joueur qui lance
+    // Validation côté frontend
     if (!isMyTurnToRoll) {
       console.error('Tentative non-autorisée de lancer les dés')
       return
     }
 
-    // Bloquer les relances
     if (hasAlreadyRolled) {
       console.error('Un lancer a déjà été effectué ce tour')
       return
     }
 
-    // Enregistrer le lancer comme effectué
-    await db.recordRoll(gameId)
+    try {
+      // Validation backend : vérifie que ce joueur est autorisé ET enregistre le lancer
+      const validation = await db.validateAndRecordRoll(gameId, currentPlayer.id, currentPlayer.team_id)
+      
+      if (!validation.valid) {
+        console.error('Validation backend échouée:', validation.error)
+        return
+      }
 
-    const analysis = analyzeDiceRoll(dice1, dice2)
-    setLastRoll(analysis)
-    
-    // Afficher localement l'animation
-    setLocalRollerAnimation({ dice1, dice2, analysis })
+      const analysis = analyzeDiceRoll(dice1, dice2)
 
-    // Enregistrer l'événement (visible à tous les joueurs)
-    await db.createGameEvent(gameId, 'dice_roll', {
-      player_id: currentPlayer.id,
-      username: currentPlayer.username,
-      team_id: currentPlayer.team_id,
-      dice1,
-      dice2,
-      analysis
-    })
+      // Enregistrer l'événement temps réel (source unique de vérité)
+      // Les dés générés côté client sont envoyés ici
+      await db.createGameEvent(gameId, 'dice_roll', {
+        player_id: currentPlayer.id,
+        username: currentPlayer.username,
+        team_id: currentPlayer.team_id,
+        dice1,
+        dice2,
+        analysis
+      })
 
-    // Gérer le statut Catin
-    if (analysis.isCatin) {
-      await db.resetAllCatinStatuses(gameId)
-      await db.setCatinStatus(currentPlayer.team_id, true)
-    }
+      // Gérer le statut Catin
+      if (analysis.isCatin) {
+        await db.resetAllCatinStatuses(gameId)
+        await db.setCatinStatus(currentPlayer.team_id, true)
+      }
 
-    // Si c'est un double 6, on peut ajouter une animation spéciale
-    if (analysis.isDoubleSix) {
-      // Animation spéciale déjà gérée dans le composant Dice
-    }
-
-    // Si la somme = 7, proposer un duel
-    if (analysis.canDuel && teams.length >= 2) {
-      setShowDuelModal(true)
-    } else {
-      // Passer au tour suivant automatiquement
-      setTimeout(() => {
-        nextTurn()
-      }, 2000)
+      // Si la somme = 7, proposer un duel
+      if (analysis.canDuel && teams.length >= 2) {
+        setShowDuelModal(true)
+      } else {
+        // Passer au tour suivant automatiquement
+        setTimeout(() => {
+          nextTurn()
+        }, 2000)
+      }
+    } catch (error) {
+      console.error('Erreur lors du lancer:', error)
     }
   }
 
@@ -103,6 +155,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
 
     setLastRoll(null)
     setLocalRollerAnimation(null)
+    setDiceToDisplay(null)
   }
 
   const handleDuelComplete = async () => {
@@ -139,13 +192,76 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
             </div>
 
             {/* Lanceur de dés */}
-            <DiceRoller
-              onRoll={handleDiceRoll}
-              disabled={!isMyTurn}
-              currentPlayerName={isMyTurn && game.current_roller_id ? teams.find(t => t.id === game.current_team_id)?.players?.find(p => p.id === game.current_roller_id)?.username : null}
-              currentRollerId={game.current_roller_id}
-              currentPlayerId={currentPlayer?.id}
-            />
+            {isMyTurn ? (
+              <DiceRoller
+                onRoll={handleDiceRoll}
+                disabled={!isMyTurn}
+                currentPlayerName={isMyTurn && game.current_roller_id ? teams.find(t => t.id === game.current_team_id)?.players?.find(p => p.id === game.current_roller_id)?.username : null}
+                currentRollerId={game.current_roller_id}
+                currentPlayerId={currentPlayer?.id}
+              />
+            ) : (
+              // Affichage des dés pour les joueurs en attente
+              <div className="flex flex-col items-center gap-6 p-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl">
+                <div className="text-center text-gray-600 mb-4">
+                  <p>En attente du lancer de :</p>
+                  <p className="font-bold text-lg text-gray-800 mt-1">
+                    {game.current_roller_id ? 
+                      teams.find(t => t.id === game.current_team_id)?.players?.find(p => p.id === game.current_roller_id)?.username 
+                      : 'Sélection en cours...'}
+                  </p>
+                </div>
+                
+                {/* Affichage des dés lancés (temps réel) */}
+                {diceToDisplay && (
+                  <motion.div
+                    key={diceToDisplay.timestamp}
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex flex-col items-center gap-4"
+                  >
+                    <div className="flex gap-6">
+                      <motion.div
+                        animate={{ rotate: [0, 360] }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                      >
+                        <div className="relative bg-white rounded-lg shadow-lg border-4 border-gray-300 w-20 h-20 flex items-center justify-center">
+                          <span className="text-4xl font-bold text-gray-800">{diceToDisplay.dice1}</span>
+                        </div>
+                      </motion.div>
+                      <motion.div
+                        animate={{ rotate: [0, -360] }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                      >
+                        <div className="relative bg-white rounded-lg shadow-lg border-4 border-gray-300 w-20 h-20 flex items-center justify-center">
+                          <span className="text-4xl font-bold text-gray-800">{diceToDisplay.dice2}</span>
+                        </div>
+                      </motion.div>
+                    </div>
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="text-3xl font-bold text-gray-700"
+                    >
+                      Total : {diceToDisplay.dice1 + diceToDisplay.dice2}
+                    </motion.div>
+                    
+                    {diceToDisplay.analysis?.isDoubleSix && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="text-2xl"
+                      >
+                        🎉 DOUBLE SIX ! 🎉
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </div>
+            )}
 
             {/* Résultat du dernier lancer */}
             {lastRoll && (
