@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const diceFaces = {
   1: [[50, 50]],
@@ -46,11 +46,18 @@ export function Dice({ value, isRolling, isSpecial = false, size = 80 }) {
   )
 }
 
-export function DiceRoller({ onRoll, disabled, currentPlayerName, currentRollerId, currentPlayerId }) {
+export function DiceRoller({ onRoll, disabled, currentPlayerName, currentRollerId, currentPlayerId, resetTrigger }) {
   const [dice1, setDice1] = useState(null)
   const [dice2, setDice2] = useState(null)
   const [isRolling, setIsRolling] = useState(false)
   const [rollAttempted, setRollAttempted] = useState(false)
+
+  // Réinitialiser rollAttempted quand resetTrigger change (nouveau tour)
+  useEffect(() => {
+    setRollAttempted(false)
+    setDice1(null)
+    setDice2(null)
+  }, [resetTrigger])
 
   // Déterminer si ce joueur est le lanceur autorisé
   const isAuthorizedRoller = currentRollerId && currentPlayerId && currentRollerId === currentPlayerId
@@ -121,22 +128,28 @@ export function DiceRoller({ onRoll, disabled, currentPlayerName, currentRollerI
         </motion.div>
       )}
 
-      <button
+      <motion.button
         onClick={handleRoll}
         disabled={isButtonDisabled}
+        whileHover={!isButtonDisabled ? { scale: 1.05 } : {}}
+        whileTap={!isButtonDisabled ? { scale: 0.95 } : {}}
         className={`px-8 py-3 rounded-lg font-semibold text-white transition-all ${
           isButtonDisabled
             ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl'
+            : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl cursor-pointer'
         }`}
       >
         {isRolling ? 'Lancement...' : rollAttempted ? 'Lance effectué' : 'Lancer les dés'}
-      </button>
+      </motion.button>
 
       {isAuthorizedRoller ? (
-        <div className="text-sm text-green-600 font-semibold">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-sm text-green-600 font-semibold"
+        >
           ✓ C'est votre tour de lancer
-        </div>
+        </motion.div>
       ) : currentPlayerName && disabled ? (
         <div className="text-sm text-gray-600">
           Tour de : <span className="font-semibold">{currentPlayerName}</span>

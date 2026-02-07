@@ -199,6 +199,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
                 currentPlayerName={isMyTurn && game.current_roller_id ? teams.find(t => t.id === game.current_team_id)?.players?.find(p => p.id === game.current_roller_id)?.username : null}
                 currentRollerId={game.current_roller_id}
                 currentPlayerId={currentPlayer?.id}
+                resetTrigger={game.current_roller_id} // Réinitialiser le bouton quand le lanceur change
               />
             ) : (
               // Affichage des dés pour les joueurs en attente
