@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DiceRoller } from '../shared/Dice'
 import { DuelModal } from './DuelModal'
@@ -10,6 +10,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   const [lastRoll, setLastRoll] = useState(null)
   const [localRollerAnimation, setLocalRollerAnimation] = useState(null)
   const [diceToDisplay, setDiceToDisplay] = useState(null) // NEW: Dés à afficher (du serveur)
+  const lastSelectedTeamRef = useRef(null) // Track quel team a déjà eu une tentative de sélection
 
   const currentTeam = teams.find(t => t.id === game.current_team_id)
   const isMyTurn = currentPlayer?.team_id === game.current_team_id
@@ -18,11 +19,15 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
 
   // Sélectionner un lanceur aléatoire au début du tour
   useEffect(() => {
-    // IMPORTANT: Vérifier que currentTeam a des joueurs avant de faire la sélection
+    // Vérifier que c'est notre tour ET pas encore de lanceur assigné
     if (isMyTurn && !game.current_roller_id && teams.length > 0) {
-      const team = teams.find(t => t.id === game.current_team_id)
-      if (team?.players?.length > 0) {
-        selectAndAssignRoller()
+      // Vérifier qu'on n'a pas DÉJÀ tenté de sélectionner pour ce team
+      if (lastSelectedTeamRef.current !== game.current_team_id) {
+        lastSelectedTeamRef.current = game.current_team_id
+        const team = teams.find(t => t.id === game.current_team_id)
+        if (team?.players?.length > 0) {
+          selectAndAssignRoller()
+        }
       }
     }
   }, [game.current_team_id, isMyTurn, gameId])
@@ -35,6 +40,12 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
     }
 
     try {
+      // IMPORTANT: Vérifier que current_roller_id est TOUJOURS vide (race condition protection)
+      if (game.current_roller_id) {
+        console.log('Un lanceur a déjà été assigné pour ce tour')
+        return
+      }
+
       const selectedRoller = selectRandomRoller(currentTeam.players)
       
       if (!selectedRoller) {
@@ -48,6 +59,12 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
       if (!isValidRoller(selectedRoller.id, currentTeam.players)) {
         console.warn('Joueur invalide sélectionné, nouvelle tentative...')
         setTimeout(() => selectAndAssignRoller(), 500)
+        return
+      }
+
+      // IMPORTANT: Revérifier une dernière fois avant d'écrire en base
+      if (game.current_roller_id) {
+        console.log('Race condition: Un autre joueur a déjà assigné un lanceur')
         return
       }
 
