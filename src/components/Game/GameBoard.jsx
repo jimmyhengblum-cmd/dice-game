@@ -111,135 +111,156 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Zone principale de jeu */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Partie en cours
-            </h1>
+    <div className="min-h-screen p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Zone principale de jeu */}
+          <div className="lg:col-span-2">
+            <div className="glass soft-shadow rounded-3xl p-8">
+              <h1 className="text-4xl font-bold text-center mb-8 bg-gradient-to-r from-blue-500 via-pink-400 to-emerald-400 bg-clip-text text-transparent">
+                🎮 Partie en cours
+              </h1>
 
-            {/* Équipe courante */}
-            <div className="text-center mb-8">
-              <div className="text-lg text-gray-600 mb-2">Tour de l'équipe :</div>
-              <div className="text-3xl font-bold text-gray-800">
-                {currentTeam?.name}
+              {/* Équipe courante */}
+              <motion.div
+                key={currentTeam?.id}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-center mb-10 p-6 glass rounded-2xl border border-blue-200/50"
+              >
+                <div className="text-sm font-semibold text-gray-600 mb-2">📌 Tour actuel</div>
+                <div className="text-4xl font-bold text-gray-800 mb-2">
+                  {currentTeam?.name}
+                </div>
                 {currentTeam?.is_catin && (
-                  <span className="ml-3 text-2xl">💀</span>
-                )}
-              </div>
-              {isMyTurn && (
-                <div className="mt-2 text-green-600 font-semibold">
-                  C'est votre tour !
-                </div>
-              )}
-            </div>
-
-            {/* Lanceur de dés */}
-            {isMyTurn ? (
-              <DiceRoller
-                onRoll={handleDiceRoll}
-                disabled={false}
-              />
-            ) : (
-              // Affichage des dés pour les joueurs en attente
-              <div className="flex flex-col items-center gap-6 p-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl">
-                <div className="text-center text-gray-600 mb-4">
-                  <p>En attente du lancer de :</p>
-                  <p className="font-bold text-lg text-gray-800 mt-1">
-                    {currentTeam?.players?.[0]?.username || 'En attente...'}
-                  </p>
-                </div>
-                
-                {/* Affichage des dés lancés (temps réel) */}
-                {diceToDisplay && (
-                  <motion.div
-                    key={diceToDisplay.timestamp}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="flex flex-col items-center gap-4"
+                  <motion.span
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="text-3xl inline-block ml-2"
                   >
-                    <div className="flex gap-6">
-                      <motion.div
-                        animate={{ rotate: [0, 360] }}
-                        transition={{ duration: 0.6, ease: 'easeOut' }}
-                      >
-                        <div className="relative bg-white rounded-lg shadow-lg border-4 border-gray-300 w-20 h-20 flex items-center justify-center">
-                          <span className="text-4xl font-bold text-gray-800">{diceToDisplay.dice1}</span>
-                        </div>
-                      </motion.div>
-                      <motion.div
-                        animate={{ rotate: [0, -360] }}
-                        transition={{ duration: 0.6, ease: 'easeOut' }}
-                      >
-                        <div className="relative bg-white rounded-lg shadow-lg border-4 border-gray-300 w-20 h-20 flex items-center justify-center">
-                          <span className="text-4xl font-bold text-gray-800">{diceToDisplay.dice2}</span>
-                        </div>
-                      </motion.div>
-                    </div>
-                    
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="text-3xl font-bold text-gray-700"
-                    >
-                      Total : {diceToDisplay.dice1 + diceToDisplay.dice2}
-                    </motion.div>
-                    
-                    {diceToDisplay.analysis?.isDoubleSix && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.4 }}
-                        className="text-2xl"
-                      >
-                        🎉 DOUBLE SIX ! 🎉
-                      </motion.div>
-                    )}
+                    💀
+                  </motion.span>
+                )}
+                {isMyTurn && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-3 px-4 py-2 bg-gradient-to-r from-emerald-400 to-green-500 text-white rounded-xl font-bold inline-block"
+                  >
+                    ✨ C'est votre tour !
                   </motion.div>
                 )}
-              </div>
-            )}
+              </motion.div>
 
-            {/* Résultat du dernier lancer */}
-            {lastRoll && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl"
-              >
-                <div className="text-center">
-                  {lastRoll.isCatin && (
-                    <div className="text-2xl font-bold text-red-600 mb-2">
-                      💀 Vous êtes la CATIN ! 💀
-                    </div>
-                  )}
-                  {lastRoll.canDuel && (
-                    <div className="text-xl font-bold text-orange-600">
-                      ⚔️ Vous pouvez lancer un duel !
-                    </div>
+              {/* Lanceur de dés */}
+              {isMyTurn ? (
+                <DiceRoller
+                  onRoll={handleDiceRoll}
+                  disabled={false}
+                />
+              ) : (
+                // Affichage des dés pour les joueurs en attente
+                <div className="flex flex-col items-center gap-6 p-8 glass rounded-2xl border border-blue-200/50">
+                  <div className="text-center text-gray-600 mb-4">
+                    <p className="text-sm font-medium">⏳ En attente du lancer de :</p>
+                    <p className="font-bold text-lg text-gray-800 mt-2 bg-gradient-to-r from-blue-500 to-pink-400 bg-clip-text text-transparent">
+                      {currentTeam?.players?.[0]?.username || 'En attente...'}
+                    </p>
+                  </div>
+                  
+                  {/* Affichage des dés lancés (temps réel) */}
+                  {diceToDisplay && (
+                    <motion.div
+                      key={diceToDisplay.timestamp}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex flex-col items-center gap-4 w-full"
+                    >
+                      <div className="flex gap-6">
+                        <motion.div
+                          animate={{ rotate: [0, 360] }}
+                          transition={{ duration: 0.6, ease: 'easeOut' }}
+                        >
+                          <div className="relative glass rounded-2xl border-2 border-blue-300 w-20 h-20 flex items-center justify-center">
+                            <span className="text-4xl font-bold text-gray-800">{diceToDisplay.dice1}</span>
+                          </div>
+                        </motion.div>
+                        <motion.div
+                          animate={{ rotate: [0, -360] }}
+                          transition={{ duration: 0.6, ease: 'easeOut' }}
+                        >
+                          <div className="relative glass rounded-2xl border-2 border-pink-300 w-20 h-20 flex items-center justify-center">
+                            <span className="text-4xl font-bold text-gray-800">{diceToDisplay.dice2}</span>
+                          </div>
+                        </motion.div>
+                      </div>
+                      
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent"
+                      >
+                        Total : {diceToDisplay.dice1 + diceToDisplay.dice2}
+                      </motion.div>
+                      
+                      {diceToDisplay.analysis?.isDoubleSix && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.4 }}
+                          className="text-3xl animate-bounce"
+                        >
+                          🎉 DOUBLE SIX ! 🎉
+                        </motion.div>
+                      )}
+                    </motion.div>
                   )}
                 </div>
-              </motion.div>
-            )}
+              )}
+
+              {/* Résultat du dernier lancer */}
+              {lastRoll && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-8 p-6 glass rounded-2xl border border-orange-200/50"
+                >
+                  <div className="text-center space-y-3">
+                    {lastRoll.isCatin && (
+                      <motion.div
+                        animate={{ scale: [1, 1.05, 1] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="text-2xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent"
+                      >
+                        💀 Vous êtes la CATIN ! 💀
+                      </motion.div>
+                    )}
+                    {lastRoll.canDuel && (
+                      <div className="text-xl font-bold text-orange-600">
+                        ⚔️ Vous pouvez lancer un duel !
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
-        </div>
 
         {/* Panneau latéral */}
-        <div className="space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           {/* Liste des équipes */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-xl font-bold mb-4">Équipes</h2>
+          <div className="glass soft-shadow rounded-3xl p-6">
+            <h2 className="text-lg font-bold mb-4 text-gray-800">👥 Équipes</h2>
             <div className="space-y-3">
               {teams.map((team) => (
-                <div
+                <motion.div
                   key={team.id}
-                  className={`p-4 rounded-lg border-2 transition-all ${
+                  layout
+                  className={`p-4 rounded-2xl transition-all border ${
                     team.id === game.current_team_id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-gray-50'
+                      ? 'glass border-blue-300/50 shadow-lg'
+                      : 'glass border-gray-200/30'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -247,30 +268,36 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
                       {team.name}
                     </span>
                     {team.is_catin && (
-                      <span className="text-xl">💀</span>
+                      <motion.span
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="text-xl"
+                      >
+                        💀
+                      </motion.span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {team.players?.length || 0} joueur(s)
+                  <div className="text-xs font-medium text-gray-600 mb-2">
+                    {team.players?.length || 0} joueur{(team.players?.length || 0) > 1 ? 's' : ''}
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {team.players?.map((player) => (
                       <span
                         key={player.id}
-                        className="text-xs px-2 py-1 bg-white rounded-full border border-gray-300"
+                        className="text-xs px-2.5 py-1 bg-white/60 rounded-lg border border-gray-200"
                       >
                         {player.username}
                       </span>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
           {/* Historique des événements */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-xl font-bold mb-4">Historique</h2>
+          <div className="glass soft-shadow rounded-3xl p-6">
+            <h2 className="text-lg font-bold mb-4 text-gray-800">📜 Historique</h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               <AnimatePresence>
                 {events.slice(-10).reverse().map((event) => (
@@ -279,14 +306,14 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    className="text-sm p-3 bg-gray-50 rounded-lg"
+                    className="text-xs p-3 bg-white/50 rounded-lg border border-gray-200/30 text-gray-700"
                   >
                     {getEventMessage(event.event_type, event.data)}
                   </motion.div>
                 ))}
               </AnimatePresence>
               {events.length === 0 && (
-                <div className="text-sm text-gray-400 text-center py-4">
+                <div className="text-xs text-gray-400 text-center py-6 font-medium">
                   Aucun événement pour le moment
                 </div>
               )}
@@ -294,6 +321,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Modal de duel */}
       {showDuelModal && (

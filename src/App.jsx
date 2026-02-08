@@ -161,28 +161,31 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
+    <div className="min-h-screen">
       {screen === 'welcome' && (
         <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-md w-full">
-            <h1 className="text-5xl font-bold text-center mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              🎲 Dice Game
-            </h1>
-            <p className="text-center text-gray-600 mb-8">
-              Un jeu de plateau multijoueur en ligne
-            </p>
+          <div className="glass soft-shadow rounded-3xl p-12 max-w-md w-full">
+            <div className="text-center mb-8">
+              <h1 className="text-6xl mb-3">🎲</h1>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-500 via-pink-400 to-emerald-400 bg-clip-text text-transparent mb-2">
+                Dice Game
+              </h1>
+              <p className="text-gray-600 text-sm font-medium">
+                Jeu de plateau multijoueur chill
+              </p>
+            </div>
 
             {!mode && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <button
                   onClick={() => setMode('create')}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-bold text-lg hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
+                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-400 to-blue-500 text-white rounded-2xl font-semibold hover:shadow-lg hover:scale-105 transition-all duration-300"
                 >
                   🎮 Créer une partie
                 </button>
                 <button
                   onClick={() => setMode('join')}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-bold text-lg hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all"
+                  className="w-full px-6 py-3 bg-gradient-to-r from-emerald-400 to-green-500 text-white rounded-2xl font-semibold hover:shadow-lg hover:scale-105 transition-all duration-300"
                 >
                   🚪 Rejoindre une partie
                 </button>
@@ -200,7 +203,7 @@ function App() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Entrez votre pseudo"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white/50"
                     maxLength={20}
                     autoFocus
                   />
@@ -209,7 +212,7 @@ function App() {
                 <button
                   type="submit"
                   disabled={isCreating || !username.trim()}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-bold text-lg hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all"
+                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-400 to-blue-500 text-white rounded-2xl font-semibold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                 >
                   {isCreating ? 'Création...' : 'Créer la partie'}
                 </button>
@@ -217,7 +220,7 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setMode(null)}
-                  className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                  className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors"
                 >
                   ← Retour
                 </button>
@@ -235,7 +238,7 @@ function App() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Entrez votre pseudo"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white/50"
                     maxLength={20}
                     autoFocus={!roomCode}
                   />
@@ -249,8 +252,8 @@ function App() {
                     type="text"
                     value={roomCode}
                     onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                    placeholder="Entrez le code (ex: ABC123)"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 uppercase"
+                    placeholder="Ex: ABC123"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white/50 uppercase"
                     maxLength={6}
                   />
                 </div>
@@ -258,7 +261,7 @@ function App() {
                 <button
                   type="submit"
                   disabled={isJoining || !username.trim() || !roomCode.trim()}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-bold text-lg hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all"
+                  className="w-full px-6 py-3 bg-gradient-to-r from-emerald-400 to-green-500 text-white rounded-2xl font-semibold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                 >
                   {isJoining ? 'Connexion...' : 'Rejoindre'}
                 </button>
@@ -266,7 +269,7 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setMode(null)}
-                  className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                  className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors"
                 >
                   ← Retour
                 </button>
@@ -279,12 +282,14 @@ function App() {
       {screen === 'lobby' && game && (
         <>
           {/* Bannière de partage */}
-          <div className="bg-blue-600 text-white py-3 px-4 text-center">
+          <div className="glass border-b border-white/20 py-4 px-4 sticky top-0 z-40">
             <div className="max-w-4xl mx-auto flex items-center justify-center gap-4 flex-wrap">
-              <span className="font-semibold">Code de la partie : {roomCode}</span>
+              <span className="font-semibold text-gray-700">
+                📌 Code: <span className="font-bold text-blue-600">{roomCode}</span>
+              </span>
               <button
                 onClick={copyInviteLink}
-                className="px-4 py-1 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors text-sm"
+                className="px-4 py-1.5 glass rounded-xl font-medium text-sm hover:scale-105 transition-all duration-300"
               >
                 📋 Copier le lien
               </button>

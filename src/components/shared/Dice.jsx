@@ -13,8 +13,8 @@ const diceFaces = {
 export function Dice({ value, isRolling, isSpecial = false, size = 80 }) {
   return (
     <motion.div
-      className={`relative bg-white rounded-lg shadow-lg border-4 ${
-        isSpecial ? 'border-yellow-400' : 'border-gray-300'
+      className={`relative glass rounded-2xl shadow-lg border-2 ${
+        isSpecial ? 'border-yellow-400/60 shadow-yellow-200' : 'border-gray-300/40'
       }`}
       style={{ width: size, height: size }}
       animate={isRolling ? {
@@ -32,7 +32,7 @@ export function Dice({ value, isRolling, isSpecial = false, size = 80 }) {
       {value && diceFaces[value]?.map((pos, i) => (
         <div
           key={i}
-          className={`absolute w-3 h-3 rounded-full ${
+          className={`absolute w-2.5 h-2.5 rounded-full ${
             isSpecial ? 'bg-yellow-500' : 'bg-gray-800'
           }`}
           style={{
@@ -86,11 +86,15 @@ export function DiceRoller({ onRoll, disabled }) {
   const isButtonDisabled = disabled || isRolling || rollAttempted
 
   return (
-    <div className="flex flex-col items-center gap-6 p-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl">
-      <div className="flex gap-6">
-        <Dice value={dice1} isRolling={isRolling} isSpecial={isDouble} />
-        <Dice value={dice2} isRolling={isRolling} isSpecial={isDouble} />
-      </div>
+    <div className="flex flex-col items-center gap-8 p-10 glass rounded-3xl border border-blue-200/50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex gap-8"
+      >
+        <Dice value={dice1} isRolling={isRolling} isSpecial={isDouble} size={120} />
+        <Dice value={dice2} isRolling={isRolling} isSpecial={isDouble} size={120} />
+      </motion.div>
 
       {dice1 && dice2 && (
         <motion.div
@@ -98,22 +102,26 @@ export function DiceRoller({ onRoll, disabled }) {
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <div className="text-3xl font-bold text-gray-700">
+          <div className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
             {dice1 + dice2}
           </div>
           {isDoubleSix && (
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="text-2xl mt-2"
+              className="text-3xl mt-3 animate-bounce"
             >
               🎉 DOUBLE SIX ! 🎉
             </motion.div>
           )}
           {isDouble && !isDoubleSix && (
-            <div className="text-lg text-purple-600 mt-2">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-lg bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent mt-3 font-bold"
+            >
               🎲 Double {dice1} !
-            </div>
+            </motion.div>
           )}
         </motion.div>
       )}
@@ -123,21 +131,21 @@ export function DiceRoller({ onRoll, disabled }) {
         disabled={isButtonDisabled}
         whileHover={!isButtonDisabled ? { scale: 1.05 } : {}}
         whileTap={!isButtonDisabled ? { scale: 0.95 } : {}}
-        className={`px-8 py-3 rounded-lg font-semibold text-white transition-all ${
+        className={`px-10 py-4 rounded-2xl font-bold text-lg transition-all ${
           isButtonDisabled
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl cursor-pointer'
+            ? 'opacity-50 cursor-not-allowed bg-gray-400 text-white'
+            : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:shadow-lg hover:shadow-blue-400/30 cursor-pointer'
         }`}
       >
-        {isRolling ? 'Lancement...' : rollAttempted ? 'Lance effectué' : 'Lancer les dés'}
+        {isRolling ? '⚡ Lancement...' : rollAttempted ? '✓ Lance effectué' : '🎲 Lancer les dés'}
       </motion.button>
 
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-sm text-green-600 font-semibold"
+        className="text-sm font-semibold bg-gradient-to-r from-emerald-500 to-green-500 bg-clip-text text-transparent"
       >
-        ✓ C'est votre tour de lancer
+        ✨ C'est votre tour !
       </motion.div>
     </div>
   )

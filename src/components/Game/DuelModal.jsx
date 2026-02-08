@@ -114,48 +114,71 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full"
+        exit={{ opacity: 0, scale: 0.9 }}
+        className="glass soft-shadow rounded-3xl p-10 max-w-2xl w-full border border-white/20"
       >
-        <h2 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+        <h2 className="text-4xl font-bold text-center mb-8 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 bg-clip-text text-transparent">
           ⚔️ DUEL ⚔️
         </h2>
 
         {step === 'select' && (
           <div>
             {isTwoTeamsMode ? (
-              <div className="text-center">
-                <p className="text-gray-600 mb-6">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center"
+              >
+                <p className="text-gray-700 mb-8 font-medium">
                   Duel automatique entre les deux équipes !
                 </p>
-                <div className="flex justify-center items-center gap-4 mb-6">
-                  <div className="text-xl font-bold">{teams.find(t => t.id === team1)?.name}</div>
-                  <div className="text-2xl">⚔️</div>
-                  <div className="text-xl font-bold">{teams.find(t => t.id === team2)?.name}</div>
+                <div className="flex justify-center items-center gap-6 mb-8">
+                  <motion.div
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent"
+                  >
+                    {teams.find(t => t.id === team1)?.name}
+                  </motion.div>
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1], rotate: [0, -10, 10, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="text-3xl"
+                  >
+                    ⚔️
+                  </motion.div>
+                  <motion.div
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-red-500 bg-clip-text text-transparent"
+                  >
+                    {teams.find(t => t.id === team2)?.name}
+                  </motion.div>
                 </div>
-              </div>
+              </motion.div>
             ) : (
               <div>
-                <p className="text-center text-gray-600 mb-6">
+                <p className="text-center text-gray-700 mb-8 font-medium">
                   Choisissez deux équipes qui vont s'affronter
                 </p>
 
-                <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-2 gap-6 mb-8">
                   {/* Sélection équipe 1 */}
                   <div>
-                    <h3 className="font-bold text-center mb-3">Équipe 1</h3>
+                    <h3 className="font-bold text-center mb-4 text-gray-800">Team 1</h3>
                     <div className="space-y-2">
                       {availableTeams.map((team) => (
                         <button
                           key={team.id}
                           onClick={() => handleTeamSelect(team.id, 1)}
-                          className={`w-full p-3 rounded-lg border-2 transition-all ${
+                          className={`w-full p-3 rounded-2xl border-2 transition-all font-medium ${
                             team1 === team.id
-                              ? 'border-blue-500 bg-blue-50 font-semibold'
-                              : 'border-gray-300 hover:border-blue-300'
+                              ? 'glass border-blue-400 bg-blue-100/40'
+                              : 'glass border-gray-200/50 hover:border-blue-300'
                           }`}
                         >
                           {team.name}
@@ -166,16 +189,16 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
 
                   {/* Sélection équipe 2 */}
                   <div>
-                    <h3 className="font-bold text-center mb-3">Équipe 2</h3>
+                    <h3 className="font-bold text-center mb-4 text-gray-800">Team 2</h3>
                     <div className="space-y-2">
                       {availableTeams.map((team) => (
                         <button
                           key={team.id}
                           onClick={() => handleTeamSelect(team.id, 2)}
-                          className={`w-full p-3 rounded-lg border-2 transition-all ${
+                          className={`w-full p-3 rounded-2xl border-2 transition-all font-medium ${
                             team2 === team.id
-                              ? 'border-red-500 bg-red-50 font-semibold'
-                              : 'border-gray-300 hover:border-red-300'
+                              ? 'glass border-red-400 bg-red-100/40'
+                              : 'glass border-gray-200/50 hover:border-red-300'
                           }`}
                         >
                           {team.name}
@@ -191,14 +214,14 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-6 py-3 glass rounded-2xl font-semibold hover:scale-105 transition-all border border-gray-300/30"
                 >
                   Annuler
                 </button>
                 <button
                   onClick={() => handleStartDuel(team1, team2)}
                   disabled={!team1 || !team2}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-semibold hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   Lancer le duel !
                 </button>
@@ -209,39 +232,53 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
 
         {(step === 'rolling' || step === 'result') && (
           <div>
-            <div className="grid grid-cols-2 gap-8 mb-8">
+            <div className="grid grid-cols-2 gap-8 mb-10">
               {/* Équipe 1 */}
-              <div className="text-center">
-                <h3 className="font-bold text-xl mb-4">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="text-center"
+              >
+                <h3 className="font-bold text-xl mb-6 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
                   {teams.find(t => t.id === team1)?.name}
                 </h3>
                 <div className="flex justify-center">
                   <Dice
                     value={team1Roll}
                     isRolling={isRolling}
-                    size={100}
+                    size={120}
                   />
                 </div>
-              </div>
+              </motion.div>
 
               {/* VS */}
-              <div className="flex items-center justify-center">
-                <div className="text-4xl font-bold text-gray-400">VS</div>
-              </div>
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="flex items-center justify-center"
+              >
+                <div className="text-5xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+                  VS
+                </div>
+              </motion.div>
 
               {/* Équipe 2 */}
-              <div className="text-center">
-                <h3 className="font-bold text-xl mb-4">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="text-center"
+              >
+                <h3 className="font-bold text-xl mb-6 bg-gradient-to-r from-pink-500 to-red-500 bg-clip-text text-transparent">
                   {teams.find(t => t.id === team2)?.name}
                 </h3>
                 <div className="flex justify-center">
                   <Dice
                     value={team2Roll}
                     isRolling={isRolling}
-                    size={100}
+                    size={120}
                   />
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             {step === 'result' && result && (
@@ -249,13 +286,13 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="text-center mb-6">
+                <div className="text-center mb-8 p-6 glass rounded-2xl border border-yellow-300/30">
                   {result.winner === 'tie' ? (
-                    <div className="text-2xl font-bold text-gray-600">
+                    <div className="text-3xl font-bold bg-gradient-to-r from-gray-500 to-gray-600 bg-clip-text text-transparent">
                       Égalité ! 🤝
                     </div>
                   ) : (
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-3xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
                       {teams.find(t => t.id === (result.winner === 'team1' ? team1 : team2))?.name} remporte le duel ! 🏆
                     </div>
                   )}
@@ -263,7 +300,7 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
 
                 <button
                   onClick={handleFinish}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition-all"
+                  className="w-full px-6 py-4 bg-gradient-to-r from-emerald-400 to-green-500 text-white rounded-2xl font-bold hover:shadow-lg hover:scale-105 transition-all"
                 >
                   Continuer
                 </button>
