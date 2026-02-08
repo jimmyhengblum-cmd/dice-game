@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DiceRoller } from '../shared/Dice'
 import { DuelModal } from './DuelModal'
+import { DuelResultDisplay } from './DuelResultDisplay'
 import { db } from '../../lib/supabase'
 import { analyzeDiceRoll, getNextTeam, getEventMessage } from '../../lib/gameLogic'
 
@@ -9,6 +10,7 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
   const [showDuelModal, setShowDuelModal] = useState(false)
   const [lastRoll, setLastRoll] = useState(null)
   const [diceToDisplay, setDiceToDisplay] = useState(null)
+  const [lastDuelEvent, setLastDuelEvent] = useState(null)
 
   const currentTeam = teams.find(t => t.id === game.current_team_id)
   const isMyTurn = currentPlayer?.team_id === game.current_team_id
@@ -30,6 +32,20 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
       setLastRoll(analysis)
     }
   }, [events])
+
+  // Écouter les événements duel_result pour afficher le résultat
+  useEffect(() => {
+    if (!events.length) return
+
+    // Chercher le dernier événement duel_result
+    const latestDuelEvent = [...events]
+      .reverse()
+      .find(e => e.event_type === 'duel_result')
+
+    if (latestDuelEvent && latestDuelEvent.id !== lastDuelEvent?.id) {
+      setLastDuelEvent(latestDuelEvent)
+    }
+  }, [events, lastDuelEvent])
 
   const handleDiceRoll = async (dice1, dice2) => {
     // Validation simple : c'est mon tour ?
@@ -289,6 +305,9 @@ export function GameBoard({ gameId, game, teams, currentPlayer, events }) {
           onComplete={handleDuelComplete}
         />
       )}
+
+      {/* Affichage du résultat du duel pour tous les joueurs */}
+      <DuelResultDisplay duelEvent={lastDuelEvent} />
     </div>
   )
 }
