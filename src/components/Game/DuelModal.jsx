@@ -94,7 +94,7 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
       }
 
       // Enregistrer le résultat
-      db.createGameEvent(gameId, 'duel_result', {
+      await db.createGameEvent(gameId, 'duel_result', {
         team1_id: t1,
         team2_id: t2,
         team1Roll: roll1,

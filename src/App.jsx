@@ -118,8 +118,25 @@ function App() {
 
       setGameId(existingGame.id)
       
-      // Ajouter le joueur
-      const player = await db.addPlayer(existingGame.id, username.trim())
+      // Vérifier si le joueur existe déjà dans cette partie
+      const { data: existingPlayer, error: playerError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('game_id', existingGame.id)
+        .eq('username', username.trim())
+        .single()
+
+      let player
+      if (existingPlayer) {
+        // Le joueur existe déjà, le réutiliser
+        player = existingPlayer
+      } else if (playerError?.code !== 'PGRST116') {
+        // Une autre erreur s'est produite (pas "not found")
+        throw playerError
+      } else {
+        // Le joueur n'existe pas, en créer un nouveau
+        player = await db.addPlayer(existingGame.id, username.trim())
+      }
       setCurrentPlayer(player)
 
       // Mettre à jour l'URL
