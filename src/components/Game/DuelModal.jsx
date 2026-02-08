@@ -73,7 +73,7 @@ export function DuelModal({ gameId, teams, currentTeamId, onClose, onComplete })
     setIsRolling(true)
 
     // Simuler le lancer avec animation
-    setTimeout(() => {
+    setTimeout(async () => {
       const roll1 = rollSingleDice()
       const roll2 = rollSingleDice()
       
