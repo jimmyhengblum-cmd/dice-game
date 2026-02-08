@@ -13,21 +13,14 @@ const diceFaces = {
 export function Dice({ value, isRolling, isSpecial = false, size = 80 }) {
   return (
     <motion.div
-      className={`relative rounded-2xl font-bold flex items-center justify-center shadow-2xl border-2 ${
-        isSpecial ? 'bg-gradient-to-br from-yellow-300 to-yellow-400 border-yellow-400' : 'bg-gradient-to-br from-blue-300 to-blue-400 border-blue-400'
+      className={`relative glass rounded-2xl font-bold flex items-center justify-center shadow-xl border-2 backdrop-blur-md ${
+        isSpecial ? 'border-yellow-300/60 shadow-yellow-200/40' : 'border-blue-300/60 shadow-blue-200/30'
       }`}
-      style={{ 
-        width: size, 
-        height: size,
-        borderColor: 'rgba(255,255,255,0.6)',
-        boxShadow: isSpecial 
-          ? '0 20px 40px rgba(251,146,60,0.4), inset -5px -5px 15px rgba(0,0,0,0.2)'
-          : '0 20px 40px rgba(59,130,246,0.3), inset -5px -5px 15px rgba(0,0,0,0.15)'
-      }}
+      style={{ width: size, height: size }}
       animate={isRolling ? {
-        rotateX: [0, 360, 720, 1080],
-        rotateY: [0, -360, -720, -1080],
-        scale: [1, 1.15, 1, 1.15, 1]
+        rotateX: [0, 360],
+        rotateY: [0, 360],
+        scale: [1, 1.1, 1]
       } : {
         rotateX: 0,
         rotateY: 0,
@@ -38,31 +31,19 @@ export function Dice({ value, isRolling, isSpecial = false, size = 80 }) {
         ease: "easeInOut"
       }}
     >
-      {/* Highlight */}
-      <div 
-        className="absolute top-2 left-2 rounded-lg" 
-        style={{
-          width: Math.max(size * 0.3, 8), 
-          height: Math.max(size * 0.3, 8),
-          background: 'rgba(255,255,255,0.4)',
-          filter: 'blur(6px)'
-        }}
-      />
-      
       {/* Points du dé */}
       {value && diceFaces[value]?.map((pos, i) => (
         <div
           key={i}
           className={`absolute rounded-full ${
-            isSpecial ? 'bg-orange-500' : 'bg-gray-900'
+            isSpecial ? 'bg-yellow-500/80' : 'bg-gray-800/90'
           }`}
           style={{
             width: Math.max(size * 0.15, 6),
             height: Math.max(size * 0.15, 6),
             left: `${pos[0]}%`,
             top: `${pos[1]}%`,
-            transform: 'translate(-50%, -50%)',
-            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)'
+            transform: 'translate(-50%, -50%)'
           }}
         />
       ))}
@@ -110,18 +91,16 @@ export function DiceRoller({ onRoll, disabled }) {
   const isButtonDisabled = disabled || isRolling || rollAttempted
 
   return (
-    <div className="flex flex-col items-center gap-10 p-10 rounded-3xl border-2 border-blue-300/40" style={{
-      background: 'linear-gradient(135deg, rgba(96,165,250,0.1) 0%, rgba(168,85,247,0.08) 100%)',
-      backdropFilter: 'blur(12px)',
-      boxShadow: '0 10px 50px rgba(59,130,246,0.15), inset 0 1px 2px rgba(255,255,255,0.5)'
+    <div className="flex flex-col items-center gap-10 p-10 glass rounded-3xl border border-blue-200/40" style={{
+      backdropFilter: 'blur(12px)'
     }}>
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         className="flex gap-10"
       >
-        <Dice value={dice1} isRolling={isRolling} isSpecial={isDouble} size={140} />
-        <Dice value={dice2} isRolling={isRolling} isSpecial={isDouble} size={140} />
+        <Dice value={dice1} isRolling={isRolling} isSpecial={isDouble} size={130} />
+        <Dice value={dice2} isRolling={isRolling} isSpecial={isDouble} size={130} />
       </motion.div>
 
       {dice1 && dice2 && (
@@ -157,7 +136,7 @@ export function DiceRoller({ onRoll, disabled }) {
       <motion.button
         onClick={handleRoll}
         disabled={isButtonDisabled}
-        whileHover={!isButtonDisabled ? { scale: 1.08, boxShadow: '0 20px 50px rgba(59,130,246,0.4)' } : {}}
+        whileHover={!isButtonDisabled ? { scale: 1.08 } : {}}
         whileTap={!isButtonDisabled ? { scale: 0.94 } : {}}
         className={`px-12 py-5 rounded-2xl font-bold text-lg transition-all ${
           isButtonDisabled
